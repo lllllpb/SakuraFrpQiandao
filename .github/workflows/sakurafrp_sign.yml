@@ -46,7 +46,7 @@ jobs:
         run: |
           python main.py
       
-      - name: 发送邮件通知
+      - name: 发送通知（邮件 + Bark）
         if: always()
         env:
           SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
@@ -54,6 +54,8 @@ jobs:
           EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL || secrets.EMAIL_USERNAME }}
+          BARK_SERVER: ${{ secrets.BARK_SERVER || 'https://api.day.app' }}
+          BARK_KEY: ${{ secrets.BARK_KEY }}
         run: |
           python send_email.py
       
