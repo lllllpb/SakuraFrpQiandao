@@ -117,7 +117,13 @@ def send_bark(log_file='checkin.log'):
         with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
             log_content = f.read()
 
-    if "今日已签到" in log_content:
+    # workflow 在「重试后仍失败」时写入该标记，优先级高于日志正则
+    fail_flag = 'checkin.failed'
+    if os.path.exists(fail_flag):
+        with open(fail_flag, 'r', encoding='utf-8', errors='replace') as f:
+            flag = f.read().strip() or "首次运行与自动重试均失败"
+        status_emoji, status_text, detail = "❌", "签到失败", flag
+    elif "今日已签到" in log_content:
         status_emoji, status_text, detail = "🟡", "今日已签到", "今天之前已经签到过了"
     elif "签到流程完成" in log_content:
         status_emoji, status_text, detail = "✅", "签到成功", "已完成签到（含验证码）"
@@ -127,11 +133,15 @@ def send_bark(log_file='checkin.log'):
         status_emoji, status_text, detail = "❌", "签到失败", "未检测到签到完成标记，请查看日志"
 
     body = f"{detail}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    payload = json.dumps({
+    payload = {
         "title": f"{status_emoji} SakuraFrp 签到{status_text}",
         "body": body,
         "group": group,
-    }).encode('utf-8')
+    }
+    run_url = os.getenv('RUN_URL', '').strip()
+    if run_url:
+        payload["url"] = run_url
+    payload = json.dumps(payload).encode('utf-8')
 
     req = urllib.request.Request(
         f"{server}/{bark_key}",

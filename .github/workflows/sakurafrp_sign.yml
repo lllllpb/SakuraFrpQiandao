@@ -34,7 +34,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: 运行签到脚本
+      - name: 运行签到脚本（失败自动重试一次）
         env:
           SAKURAFRP_USER: ${{ secrets.SAKURAFRP_USER }}
           SAKURAFRP_PASS: ${{ secrets.SAKURAFRP_PASS }}
@@ -44,7 +44,21 @@ jobs:
           CI: 'true'
           HEADLESS: 'true'
         run: |
+          set +e
+          rm -f checkin.failed
           python main.py
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "::warning::首次签到失败（exit $rc），60 秒后自动重试一次"
+            sleep 60
+            python main.py
+            rc=$?
+          fi
+          if [ $rc -ne 0 ]; then
+            echo "::error::重试后仍失败（exit $rc），交由通知步骤发送 Bark 告警"
+            echo "首次签到失败（exit $rc），自动重试一次后仍失败" > checkin.failed
+          fi
+          exit $rc
       
       - name: 发送通知（邮件 + Bark）
         if: always()
@@ -56,6 +70,7 @@ jobs:
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL || secrets.EMAIL_USERNAME }}
           BARK_SERVER: ${{ secrets.BARK_SERVER || 'https://api.day.app' }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           python send_email.py
       
@@ -64,5 +79,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: checkin-logs
-          path: checkin.log
+          path: |
+            checkin.log
+            error_screenshot.png
+            error_page_source.html
           retention-days: 7
+          if-no-files-found: ignore

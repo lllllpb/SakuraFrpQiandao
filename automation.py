@@ -39,7 +39,7 @@ class CheckInAutomation:
         driver = self.driver_manager.initialize(headless=headless)
         if not driver:
             logger.error("WebDriver 初始化失败，无法继续")
-            return
+            return False
         
         wait = WebDriverWait(driver, 20)
         
@@ -47,12 +47,12 @@ class CheckInAutomation:
             # 步骤1: 登录
             if not self._login(driver, wait):
                 logger.error("登录失败")
-                return
+                return False
             
             # 步骤2: 跳转到 处理年龄
             if not self._navigate_to_sakurafrp(driver, wait):
                 logger.error("跳转到 SakuraFrp 失败")
-                return
+                return False
             
             # 步骤3: 执行签到
             if not self._perform_checkin(driver, wait):
@@ -60,12 +60,14 @@ class CheckInAutomation:
                 driver.save_screenshot('error_screenshot.png')
                 with open('error_page_source.html', 'w', encoding='utf-8') as f:
                     f.write(driver.page_source)
-                return
+                return False
             
             logger.info("✓ 签到流程完成")
-            
+            return True
+
         except Exception as e:
             logger.error(f"执行过程中发生错误: {e}", exc_info=True)
+            return False
         finally:
             logger.info("脚本执行完毕，浏览器保持打开状态供检查")
     
