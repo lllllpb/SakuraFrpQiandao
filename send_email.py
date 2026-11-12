@@ -137,6 +137,7 @@ def send_bark(log_file='checkin.log'):
         "title": f"{status_emoji} SakuraFrp 签到{status_text}",
         "body": body,
         "group": group,
+        "level": "timeSensitive",
     }
     run_url = os.getenv('RUN_URL', '').strip()
     if run_url:
